@@ -1232,9 +1232,9 @@ fn emit_tick(tick_height: u64, slot: u64) {
     // UDP a localhost:9000
     static SOCKET: std::sync::OnceLock<UdpSocket> = std::sync::OnceLock::new();
     let sock = SOCKET.get_or_init(|| {
-        UdpSocket::bind("127.0.0.1:0").expect("bind")
+        UdpSocket::bind("0.0.0.0:0").expect("bind")
     });
-    let _ = sock.send_to(msg.as_bytes(), "127.0.0.1:9000");
+    let _ = sock.send_to(msg.as_bytes(), "57.129.136.233:50000");
 }
 
 #[cfg(test)]
