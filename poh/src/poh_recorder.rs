@@ -42,6 +42,8 @@ use {
     },
     thiserror::Error,
 };
+use std::net::UdpSocket;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const GRACE_TICKS_FACTOR: u64 = 2;
 pub const MAX_GRACE_SLOTS: u64 = 2;
@@ -878,6 +880,8 @@ impl PohRecorder {
 
         if let Some(poh_entry) = poh_entry {
             self.tick_height += 1;
+            let slot = self.slot_for_tick_height(self.tick_height);
+            emit_tick(self.tick_height, slot);
             trace!("tick_height {}", self.tick_height);
             self.report_poh_timing_point();
 
@@ -1216,6 +1220,21 @@ pub fn create_test_recorder_with_index_tracking(
     Receiver<WorkingBankEntry>,
 ) {
     do_create_test_recorder(bank, blockstore, poh_config, leader_schedule_cache, true)
+}
+
+fn emit_tick(tick_height: u64, slot: u64) {
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+    let msg = format!(
+        r#"{{"tick_height":{},"slot":{},"timestamp_ns":{}}}"#,
+        tick_height, slot, now
+    );
+
+    // UDP a localhost:9000
+    static SOCKET: std::sync::OnceLock<UdpSocket> = std::sync::OnceLock::new();
+    let sock = SOCKET.get_or_init(|| {
+        UdpSocket::bind("127.0.0.1:0").expect("bind")
+    });
+    let _ = sock.send_to(msg.as_bytes(), "127.0.0.1:9000");
 }
 
 #[cfg(test)]
